@@ -3,6 +3,14 @@
 
 // Project 02 -- ROCKET PATROL RELOADED IV: THE ROCKETING
 
+// Approximate Time to Complete: TBD
+// Implemented Mods:
+//   - New enemy Spaceship type (smaller and comparitively faster) 
+//   - Alternating two-player mode 
+//   - Timing and scoring: +time on hit, -time on miss 
+//   - Mouse control for movement, and Left Click to fire
+//   - Particle emitter explosion on hit 
+
 /*
 
 Rocket Patrol (1978), a rudimentary sci-fi gallery shooter included as a pack-in game for the obscure APF MP-1000 console. 

@@ -37,7 +37,6 @@ class Rocket extends Phaser.GameObjects.Sprite {
         
         */
 
-
         // fire button -- left click
         if (this.scene.input.mousepointer.justDown && !this.isFiring) {       
             this.isFiring = true
