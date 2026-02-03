@@ -20,21 +20,30 @@ class Play extends Phaser.Scene {
         this.starfield = this.add.tileSprite(0, 0, 640, 480, 'starfield').setOrigin(0, 0);
 
         // add rocket (p1)
-        this.p1Rocket = new Rocket(this, game.config.width / 2, game.config.height - borderUISize - borderPadding, 'rocket').setOrigin(0.5, 0);
+        this.p1 = new Rocket(this, game.config.width / 3, game.config.height - borderUISize - borderPadding, 'rocket');
+        this.p2 = new Rocket(this, (game.config.width / 3) * 2, game.config.height - borderUISize - borderPadding, 'rocket');
+        this.currentPlayer = 1; // start with player 1
+
+
 
         // add spaceships (x3)
         this.ship01 = new Spaceship(this, game.config.width + borderUISize * 6, borderUISize * 4, 'spaceship', 0, 30).setOrigin(0, 0);
         this.ship02 = new Spaceship(this, game.config.width + borderUISize * 3, borderUISize * 5 + borderPadding * 2, 'spaceship', 0, 20).setOrigin(0, 0);
         this.ship03 = new Spaceship(this, game.config.width, borderUISize * 6 + borderPadding * 4, 'spaceship', 0, 10).setOrigin(0, 0);
 
+
+        // NEW additon of fastship here
+        this.fastShip = new FastShip(this, game.config.width + 100, borderUISize * 3, 'fastship', 0, 50); 
+
         // define keys
-        keyFIRE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
+        // keyFIRE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
         keyRESET = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
         keyLEFT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);
-        keyRIGHT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
+        // keyRIGHT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
 
         // initialize score
         this.p1Score = 0;
+        this.p2Score = 0;           // NEW LINE for Player II
 
         // display score
         let scoreConfig = {
@@ -49,11 +58,19 @@ class Play extends Phaser.Scene {
             },
             fixedWidth: 100
         };
-        this.scoreLeft = this.add.text(borderUISize + borderPadding, borderUISize + borderPadding * 2, this.p1Score, scoreConfig);
+        this.scoreLeft = this.add.text(borderUISize + borderPadding, borderUISize + borderPadding * 2, 'P1: 0', scoreConfig);
+        this.scoreRight = this.add.text(game.config.width - borderUISize - borderPadding - 120, borderUISize + borderPadding * 2, 'P2: 0', scoreConfig);
+
+        // timer
+        this.initialTime = game.settings.gameTimer;
+        this.timeLeft = this.initialTime;
+        this.timerText = this.add.text(game.config.width / 2, borderUISize + borderPadding * 2, '', scoreConfig).setOrigin(0.5);
+        this.updateTimerDisplay();
 
         // GAME OVER flag
         this.gameOver = false;
 
+    /*
         // 60-second play clock
         scoreConfig.fixedWidth = 0;
         this.clock = this.time.delayedCall(game.settings.gameTimer, () => {
@@ -61,21 +78,56 @@ class Play extends Phaser.Scene {
             this.add.text(game.config.width / 2, game.config.height / 2 + 64, 'Press (R) to Restart or ← for Menu', scoreConfig).setOrigin(0.5);
             this.gameOver = true;
         }, null, this);
+    */
+
+        // Clock Module
+        this.clock = this.time.addEvent({
+            delay: 1000,                        // 1 sec
+            callback: this.updateClock,
+            callbackScope: this,
+            loop: true
+        });
+
+        // particle emitter (for explosions)
+        this.particles = this.add.particles('explosion');
+        this.emitter = this.particles.createEmitter({
+            frame: 'explosion',
+            x: 0,
+            y: 0,
+            quantity: 6,
+            lifespan: 300,
+            speed: { min: 50, max: 200 },
+            angle: { min: 0, max: 360 },
+            scale: { start: 0.5, end: 0 },
+            alpha: { start: 1, end: 0 }
+        });
+        this.emitter.stop();                // keep it off until needed
+
     }
 
     update() {
 
         // check key input for restart
-        if(this.gameOver && Phaser.Input.Keyboard.JustDown(keyRESET)) {
-            this.scene.restart()
-        }
+        if (this.gameOver) {
+            if(this.gameOver && Phaser.Input.Keyboard.JustDown(keyRESET)) {
+                this.scene.restart()
+            }
 
-        if (this.gameOver && Phaser.Input.Keyboard.JustDown(keyLEFT)) {
-            this.scene.start("menuScene");
+            if (this.gameOver && Phaser.Input.Keyboard.JustDown(keyLEFT)) {
+                this.scene.start("menuScene");
 
+            }
+            return;
         }
 
         this.starfield.tilePositionX -= 4
+
+        // update current player rocket
+        if (this.currentPlayer === 1) {
+            this.p1.update();
+        } else {
+            this.p2.update();
+        }
 
         if (!this.gameOver) {
             this.p1Rocket.update();     // Update to rocket sprite
@@ -86,17 +138,28 @@ class Play extends Phaser.Scene {
         }
 
         // check collisions
-        if (this.checkCollision(this.p1Rocket, this.ship03)) {
-            this.p1Rocket.reset();
-            this.shipExplode(this.ship03);
-        }
-        if (this.checkCollision(this.p1Rocket, this.ship02)) {
-            this.p1Rocket.reset();
-            this.shipExplode(this.ship02);
-        }
-        if (this.checkCollision(this.p1Rocket, this.ship01)) {
-            this.p1Rocket.reset();
-            this.shipExplode(this.ship01);
+        let rockets = [this.p1, this.p2];
+        let ships = [this.ship01, this.ship02, this.ship03, this.fastShip];
+
+        for (let rocket of rockets) {
+            for (let ship of ships) {
+                if (this.checkCollision(rocket, ship) && rocket.isFiring) {
+                    rocket.reset();
+                    this.shipExplode(ship);
+                    // switch player after hit
+                    this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
+                    // add time on hit
+                    this.addTime(3000); // +3 seconds
+                    // update score
+                    if (rocket === this.p1) {
+                        this.p1Score += ship.points;
+                        this.scoreLeft.text = `P1: ${this.p1Score}`;
+                    } else {
+                        this.p2Score += ship.points;
+                        this.scoreRight.text = `P2: ${this.p2Score}`;
+                    }
+                }
+            }
         }
     }
 
@@ -112,20 +175,54 @@ class Play extends Phaser.Scene {
         }
     }
 
-    shipExplode(ship) {
-        this.sound.play('sfx-explosion')
 
-        // temporarily hide ship
-        ship.alpha = 0                         
-        let boom = this.add.sprite(ship.x, ship.y, 'explosion').setOrigin(0, 0)
-        boom.anims.play('explode')           // play explode animation
-        boom.on('animationcomplete', () => { // callback after ani completes
-            ship.reset()                       // reset ship position
-            ship.alpha = 1                     // make ship visible again
-            boom.destroy()                     // remove explosion sprite
-        })
-        // score add and text update
-        this.p1Score += ship.points
-        this.scoreLeft.text = this.p1Score       
+    timeMissed() {
+        // subtract time on miss
+        this.subtractTime(2000); // -2 seconds
+        // switch player on miss too
+        this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
+    }
+
+    addTime(ms) {
+        this.timeLeft += ms;
+        this.updateTimerDisplay();
+    }
+
+    subtractTime(ms) {
+        this.timeLeft -= ms;
+        if (this.timeLeft <= 0) {
+            this.timeLeft = 0;
+            this.endGame();
+        }
+        this.updateTimerDisplay();
+    }
+
+    updateClock() {
+        this.subtractTime(1000); // tick down every second
+    }
+
+    updateTimerDisplay() {
+        let seconds = Math.ceil(this.timeLeft / 1000);
+        this.timerText.text = `${seconds}s`;
+        if (this.timeLeft <= 0) {
+            this.endGame();
+        }
+    }
+
+    endGame() {
+        this.gameOver = true;
+        let finalScore = this.p1Score + this.p2Score;
+        let scoreConfig = {
+            fontFamily: 'Courier',
+            fontSize: '28px',
+            backgroundColor: '#F3B141',
+            color: '#843605',
+            align: 'center',
+            padding: { top: 5, bottom: 5 },
+            fixedWidth: 0
+        };
+        this.add.text(game.config.width / 2, game.config.height / 2, 'GAME OVER', scoreConfig).setOrigin(0.5);
+        this.add.text(game.config.width / 2, game.config.height / 2 + 64, `Final Score: ${finalScore}`, scoreConfig).setOrigin(0.5);
+        this.add.text(game.config.width / 2, game.config.height / 2 + 128, 'Press (R) to Restart or ← for Menu', scoreConfig).setOrigin(0.5);
     }
 }
