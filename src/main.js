@@ -3,7 +3,8 @@
 
 // Project 02 -- ROCKET PATROL RELOADED IV: THE ROCKETING
 
-// Approximate Time to Complete: TBD
+// Approximate Time to Complete: Idk maybe 22 hours?
+
 // Implemented Mods:
 //   - New enemy Spaceship type (smaller and comparitively faster) 
 //   - Alternating two-player mode 
