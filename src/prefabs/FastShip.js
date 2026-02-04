@@ -2,21 +2,22 @@ class FastShip extends Phaser.GameObjects.Sprite{
     constructor (scene, x, y, texture, frame, pointValue) {
         super(scene, x, y, texture, frame);
         scene.add.existing(this);
-        this.pointValue = pointValue;
+        this.points = pointValue;               // this.pointValue
 
         // ShipSpeed
-        this.moveSpeed = game.settings.shipSpeed + 2;       // for faster movement
+        this.moveSpeed = game.settings.shipSpeed + 3;       // for faster movement
     }
 
     update () {
         this.x -= this.moveSpeed;
+
         if (this.x <= 0 - this.width){
-            this.x = game.config.width;
+            this.reset();
         }
     }
 
     reset() {
-        this.x = game.config.width;
+        this.x = game.config.width + Phaser.Math.Between(100, 300);
     }
 
 }
