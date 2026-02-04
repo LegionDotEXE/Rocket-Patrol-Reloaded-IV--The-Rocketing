@@ -16,15 +16,17 @@ class Rocket extends Phaser.GameObjects.Sprite {
     update() {
 
         // Mouse Controls
-        if (!this.isFiring && this.scene.input.mousepointer.isDown === false) {
-            this.x = this.scene.input.mousepointer.x;
+
+        if (!this.isFiring && this.scene.input.mousePointer.isDown === false) {
+            this.x = this.scene.input.mousePointer.x;
             // limits within border
-            if (this.x < borderUISize + borderPadding){
+            if (this.x < borderUISize + borderPadding) {
                 this.x = borderUISize + borderPadding;
-            } else if (this.x > game.config.width - borderUISize - borderPadding){
+            } else if (this.x > game.config.width - borderUISize - borderPadding) {
                 this.x = game.config.width - borderUISize - borderPadding;
             }
         }
+
 
         /*
         if (!this.isFiring) {
@@ -38,9 +40,9 @@ class Rocket extends Phaser.GameObjects.Sprite {
         */
 
         // fire button -- left click
-        if (this.scene.input.mousepointer.justDown && !this.isFiring) {       
-            this.isFiring = true
-            this.sfxShot.play()
+        if (this.scene.input.mousePointer.justDown && !this.isFiring) {       
+            this.isFiring = true;
+            this.sfxShot.play();
         }
 
         // Movements, if fired
@@ -50,15 +52,8 @@ class Rocket extends Phaser.GameObjects.Sprite {
 
         // reset on miss
         if (this.isFiring && this.y <= borderUISize + borderPadding * 3) {
-            this.scene.timeMissed();            // Notify scene of miss
+            this.scene.timeMissed(); // Notify scene of miss
             this.reset();
         }
     }
-
-    // reset rocket to "ground"
-    reset() {
-        this.isFiring = false
-        this.y = game.config.height - borderUISize - borderPadding
-    }
 }
-

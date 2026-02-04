@@ -16,15 +16,14 @@ class Play extends Phaser.Scene {
         this.add.rectangle(0, 0, borderUISize, game.config.height, 0xFFFFFF).setOrigin(0, 0);
         this.add.rectangle(game.config.width - borderUISize, 0, borderUISize, game.config.height, 0xFFFFFF).setOrigin(0, 0);
 
-        // place tile sprite
+        // starfield
         this.starfield = this.add.tileSprite(0, 0, 640, 480, 'starfield').setOrigin(0, 0);
 
-        // add rocket (p1)
+        // add players/rockets
+
         this.p1 = new Rocket(this, game.config.width / 3, game.config.height - borderUISize - borderPadding, 'rocket');
         this.p2 = new Rocket(this, (game.config.width / 3) * 2, game.config.height - borderUISize - borderPadding, 'rocket');
-        this.currentPlayer = 1; // start with player 1
-
-
+        this.currentPlayer = 1;                     // Player 1 by default
 
         // add spaceships (x3)
         this.ship01 = new Spaceship(this, game.config.width + borderUISize * 6, borderUISize * 4, 'spaceship', 0, 30).setOrigin(0, 0);
@@ -33,13 +32,13 @@ class Play extends Phaser.Scene {
 
 
         // NEW additon of fastship here
-        this.fastShip = new FastShip(this, game.config.width + 100, borderUISize * 3, 'fastship', 0, 50); 
+        this.fastShip = new FastShip(this, game.config.width + 100, borderUISize * 3, 'fastship', 0, 50);       // Review Here
 
         // define keys
-        // keyFIRE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
+        keyFIRE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
         keyRESET = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
         keyLEFT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);
-        // keyRIGHT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
+        keyRIGHT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
 
         // initialize score
         this.p1Score = 0;
@@ -89,19 +88,18 @@ class Play extends Phaser.Scene {
         });
 
         // particle emitter (for explosions)
-        this.particles = this.add.particles('explosion');
-        this.emitter = this.particles.createEmitter({
+        // Particle emitter for explosions (Phaser 3.60+ compatible)
+        this.emitter = this.add.particles('explosion', {
             frame: 'explosion',
-            x: 0,
-            y: 0,
-            quantity: 6,
+            quantity: 8,
             lifespan: 300,
             speed: { min: 50, max: 200 },
             angle: { min: 0, max: 360 },
             scale: { start: 0.5, end: 0 },
-            alpha: { start: 1, end: 0 }
+            alpha: { start: 1, end: 0 },
+            on: false
         });
-        this.emitter.stop();                // keep it off until needed
+        // this.emitter.stop();                // keep it off until needed
 
     }
 
@@ -122,20 +120,16 @@ class Play extends Phaser.Scene {
 
         this.starfield.tilePositionX -= 4
 
-        // update current player rocket
-        if (this.currentPlayer === 1) {
-            this.p1.update();
-        } else {
-            this.p2.update();
-        }
+    // Update current player's rocket
+    let currentPlayerRocket = this.currentPlayer === 1 ? this.p1 : this.p2;
+    currentPlayerRocket.update();
 
-        if (!this.gameOver) {
-            this.p1Rocket.update();     // Update to rocket sprite
+    // Check for miss: rocket reached top while firing
+    if (currentPlayerRocket.isFiring && currentPlayerRocket.y <= borderUISize + borderPadding * 3) {
+        currentPlayerRocket.reset();
+        this.timeMissed();
+    }
 
-            this.ship01.update();       // Update applied for spaceship x3
-            this.ship02.update();
-            this.ship03.update();
-        }
 
         // check collisions
         let rockets = [this.p1, this.p2];
@@ -175,12 +169,27 @@ class Play extends Phaser.Scene {
         }
     }
 
+    shipExplode(ship) {
+        ship.alpha = 0;
+        // play sound
+        this.sound.play('sfx-explosion');
+
+        // particle explosion
+        //this.emitter.setPosition(ship.x, ship.y);
+        //this.emitter.explode();
+        this.emitter.explode(8, ship.x, ship.y);                            // (quantity, x, y)
+
+        // reset after short delay
+        this.time.delayedCall(200, () => {
+            ship.reset();
+            ship.alpha = 1;
+        });
+    }
 
     timeMissed() {
         // subtract time on miss
         this.subtractTime(2000); // -2 seconds
-        // switch player on miss too
-        this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
+        this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;                          // switch player on miss
     }
 
     addTime(ms) {
@@ -198,7 +207,7 @@ class Play extends Phaser.Scene {
     }
 
     updateClock() {
-        this.subtractTime(1000); // tick down every second
+        this.subtractTime(1000);                // tick -tock every second
     }
 
     updateTimerDisplay() {
